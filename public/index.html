@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TALKNET — Tactical Comms</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       DESIGN SYSTEM — Phosphor Terminal Aesthetic
+       Dark military green + amber accents
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --bg:          #070a08;
+      --surface:     #0c100e;
+      --surface2:    #111710;
+      --border:      #1c2a1f;
+      --border2:     #243328;
+      --green:       #3df57a;
+      --green-glow:  rgba(61,245,122,0.15);
+      --green-dim:   #183324;
+      --amber:       #f5a623;
+      --amber-glow:  rgba(245,166,35,0.15);
+      --amber-dim:   #3d2800;
+      --red:         #f04040;
+      --red-glow:    rgba(240,64,64,0.15);
+      --red-dim:     #3d0c0c;
+      --text:        #a8cca8;
+      --text-dim:    #3a5a3f;
+      --text-bright: #d4f0d4;
+      --mono:        'Share Tech Mono', monospace;
+      --cond:        'Barlow Condensed', sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      overflow: hidden;
+      /* CRT scanline texture */
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px),
+        radial-gradient(ellipse at 50% 0%, rgba(61,245,122,0.04) 0%, transparent 70%);
+    }
+
+    /* ─── JOIN SCREEN ──────────────────────────────────── */
+    #join-screen {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .join-card {
+      width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      box-shadow: 0 0 60px rgba(61,245,122,0.05), inset 0 1px 0 rgba(61,245,122,0.06);
+      padding: 40px 36px 36px;
+    }
+
+    .join-logo {
+      font-family: var(--cond);
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(61,245,122,0.5);
+      margin-bottom: 4px;
+    }
+
+    .join-tagline {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 36px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .field-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .join-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      color: var(--text-bright);
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 10px 12px;
+      margin-bottom: 18px;
+      outline: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .join-input::placeholder { color: var(--text-dim); }
+    .join-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 12px var(--green-glow);
+    }
+
+    .join-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      padding: 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      margin-top: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .join-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--green);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .join-btn:hover::before { opacity: 0.08; }
+    .join-btn:hover { box-shadow: 0 0 20px var(--green-glow); }
+    .join-btn:active { transform: scale(0.99); }
+
+    .join-hint {
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 20px;
+      line-height: 1.8;
+    }
+
+    /* ─── APP LAYOUT ──────────────────────────────────── */
+    #app-screen {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #app-screen.active { display: flex; }
+
+    /* ─── HEADER ──────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo-sm {
+      font-family: var(--cond);
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--green);
+      text-shadow: 0 0 12px rgba(61,245,122,0.4);
+    }
+
+    .room-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+    .room-badge span {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      padding: 3px 8px;
+      color: var(--amber);
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .room-badge span:hover { border-color: var(--amber); }
+
+    .peer-count {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .peer-count em { color: var(--green); font-style: normal; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .my-callsign {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+    .my-callsign strong {
+      color: var(--text-bright);
+      font-weight: normal;
+      letter-spacing: 2px;
+    }
+
+    .dnd-btn {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 5px 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dnd-btn .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+    .dnd-btn.dnd-active { border-color: var(--red); color: var(--red); }
+    .dnd-btn.dnd-active .dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .dnd-btn:hover { border-color: var(--text); color: var(--text); }
+
+    /* ─── INCOMING TRANSMISSION BANNER ─────────────────── */
+    #incoming-banner {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 20px;
+      background: linear-gradient(90deg, var(--green-dim), transparent);
+      border-bottom: 1px solid rgba(61,245,122,0.2);
+      flex-shrink: 0;
+      animation: banner-in 0.2s ease;
+    }
+    @keyframes banner-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+    #incoming-banner.active { display: flex; }
+
+    .incoming-bars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .incoming-bars .bar {
+      width: 3px;
+      background: var(--green);
+      border-radius: 2px;
+      animation: bar-bounce 0.6s infinite alternate;
+    }
+    .incoming-bars .bar:nth-child(1) { height: 8px;  animation-delay: 0.0s; }
+    .incoming-bars .bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+    .incoming-bars .bar:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+    .incoming-bars .bar:nth-child(4) { height: 20px; animation-delay: 0.05s; }
+    .incoming-bars .bar:nth-child(5) { height: 10px; animation-delay: 0.15s; }
+    @keyframes bar-bounce {
+      from { transform: scaleY(0.4); opacity: 0.6; }
+      to   { transform: scaleY(1);   opacity: 1; }
+    }
+
+    .incoming-text {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .incoming-text strong { color: var(--green); font-weight: normal; letter-spacing: 3px; }
+
+    .incoming-targets {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    /* ─── PEERS GRID ──────────────────────────────────── */
+    #peers-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+
+    /* Custom scrollbar */
+    #peers-grid::-webkit-scrollbar { width: 4px; }
+    #peers-grid::-webkit-scrollbar-track { background: transparent; }
+    #peers-grid::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+    .empty-state .em-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 11px; letter-spacing: 2px; line-height: 2; }
+
+    /* ─── PEER CARD ───────────────────────────────────── */
+    .peer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px 14px 14px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+      user-select: none;
+    }
+
+    .peer-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--text-dim);
+      transition: background 0.2s;
+    }
+
+    /* available — selectable */
+    .peer-card.available:hover {
+      border-color: var(--border2);
+      box-shadow: 0 0 16px rgba(61,245,122,0.06);
+    }
+    .peer-card.available::before { background: var(--green-dim); }
+
+    /* selected */
+    .peer-card.selected {
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 20px var(--amber-glow) !important;
+    }
+    .peer-card.selected::before { background: var(--amber) !important; }
+
+    /* busy — not selectable */
+    .peer-card.busy {
+      cursor: not-allowed;
+      border-color: rgba(240,64,64,0.3);
+    }
+    .peer-card.busy::before { background: var(--red); }
+
+    /* dnd — not selectable */
+    .peer-card.dnd {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    .peer-card.dnd::before { background: var(--text-dim); }
+
+    /* transmitting TO this peer */
+    .peer-card.receiving {
+      border-color: rgba(61,245,122,0.4) !important;
+      box-shadow: 0 0 24px var(--green-glow) !important;
+      animation: receive-pulse 1.2s infinite;
+    }
+    @keyframes receive-pulse {
+      0%, 100% { box-shadow: 0 0 20px var(--green-glow); }
+      50%       { box-shadow: 0 0 36px rgba(61,245,122,0.25); }
+    }
+
+    .peer-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--green-dim);
+      border: 1px solid rgba(61,245,122,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--cond);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+    .peer-card.busy .peer-avatar {
+      background: var(--red-dim);
+      border-color: rgba(240,64,64,0.3);
+      color: var(--red);
+    }
+    .peer-card.dnd .peer-avatar {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+    .peer-card.selected .peer-avatar {
+      background: var(--amber-dim);
+      border-color: rgba(245,166,35,0.4);
+      color: var(--amber);
+    }
+    .peer-card.receiving .peer-avatar {
+      box-shadow: 0 0 16px rgba(61,245,122,0.4);
+    }
+
+    .peer-name {
+      font-family: var(--cond);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-bright);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .peer-status-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .available .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .busy      .status-dot { background: var(--red);   box-shadow: 0 0 6px var(--red); animation: blink 1s infinite; }
+    .dnd       .status-dot { background: var(--text-dim); }
+    .receiving .status-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .status-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .available .status-label { color: var(--text-dim); }
+    .busy      .status-label { color: var(--red); }
+    .dnd       .status-label { color: var(--text-dim); }
+    .receiving .status-label { color: var(--green); }
+
+    .select-check {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 16px; height: 16px;
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px;
+      color: transparent;
+      transition: all 0.15s;
+    }
+    .peer-card.selected .select-check {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: var(--bg);
+    }
+    .peer-card.busy    .select-check,
+    .peer-card.dnd     .select-check { display: none; }
+
+    /* ─── PTT FOOTER ──────────────────────────────────── */
+    footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 14px 20px 16px;
+    }
+
+    .ptt-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      min-height: 20px;
+    }
+
+    .transmit-to {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .transmit-to em { color: var(--amber); font-style: normal; }
+
+    .clear-targets-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      padding: 2px 6px;
+      display: none;
+      transition: color 0.15s;
+    }
+    .clear-targets-btn:hover { color: var(--amber); }
+    .clear-targets-btn.visible { display: block; }
+
+    .ptt-row {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    #ptt-btn {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      padding: 14px 20px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.1s;
+      position: relative;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    #ptt-btn .ptt-icon {
+      font-size: 16px;
+      opacity: 0.5;
+    }
+
+    #ptt-btn:not(:disabled):hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    #ptt-btn.transmitting {
+      background: var(--green-dim);
+      border-color: var(--green);
+      color: var(--green);
+      box-shadow: 0 0 24px var(--green-glow);
+      animation: transmit-pulse 1s infinite;
+    }
+    @keyframes transmit-pulse {
+      0%, 100% { box-shadow: 0 0 20px var(--green-glow); }
+      50%       { box-shadow: 0 0 40px rgba(61,245,122,0.3); }
+    }
+    #ptt-btn.transmitting .ptt-icon { opacity: 1; }
+
+    #ptt-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Waveform inside PTT button */
+    .ptt-wave {
+      display: none;
+      align-items: center;
+      gap: 2px;
+      height: 20px;
+    }
+    .ptt-wave .w { width: 3px; border-radius: 2px; background: var(--green); animation: wave 0.5s infinite alternate; }
+    .ptt-wave .w:nth-child(1) { animation-delay: 0.0s; }
+    .ptt-wave .w:nth-child(2) { animation-delay: 0.1s; }
+    .ptt-wave .w:nth-child(3) { animation-delay: 0.2s; }
+    .ptt-wave .w:nth-child(4) { animation-delay: 0.05s; }
+    .ptt-wave .w:nth-child(5) { animation-delay: 0.15s; }
+    .ptt-wave .w:nth-child(6) { animation-delay: 0.08s; }
+    @keyframes wave {
+      from { height: 4px;  opacity: 0.5; }
+      to   { height: 20px; opacity: 1; }
+    }
+    #ptt-btn.transmitting .ptt-wave { display: flex; }
+    #ptt-btn.transmitting .ptt-label-text { display: none; }
+
+    .shortcut-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .shortcut-hint kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      padding: 1px 6px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    /* ─── TOAST NOTIFICATIONS ─────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 100px; right: 20px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      padding: 8px 14px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      animation: toast-in 0.2s ease, toast-out 0.3s ease 2.7s forwards;
+      max-width: 260px;
+    }
+    @keyframes toast-in  { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+    @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+
+    /* ─── HIDDEN ──────────────────────────────────────── */
+    #audio-container { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ JOIN SCREEN ═══════════════════════════ -->
+<div id="join-screen">
+  <div class="join-card">
+    <div class="join-logo">TALKNET</div>
+    <div class="join-tagline">Push-to-Talk // WebRTC</div>
+
+    <div class="field-label">Your Callsign</div>
+    <input class="join-input" id="username-input" placeholder="ENTER NAME" maxlength="20" autocomplete="off" />
+
+    <div class="field-label">Channel Code</div>
+    <input class="join-input" id="room-input" placeholder="ROOM CODE" maxlength="20" autocomplete="off" />
+
+    <button class="join-btn" id="join-btn">▶ CONNECT TO CHANNEL</button>
+
+    <div class="join-hint">
+      Share the channel code with teammates<br/>
+      to join the same room
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP SCREEN ════════════════════════════ -->
+<div id="app-screen">
+
+  <header>
+    <div class="header-left">
+      <div class="logo-sm">TALKNET</div>
+      <div class="room-badge">
+        CH: <span id="room-display" title="Click to copy">—</span>
+      </div>
+      <div class="peer-count"><em id="peer-count-num">0</em> ONLINE</div>
+    </div>
+    <div class="header-right">
+      <div class="my-callsign">YOU: <strong id="my-name-display">—</strong></div>
+      <button class="dnd-btn" id="dnd-btn">
+        <span class="dot"></span>
+        <span id="dnd-label">AVAILABLE</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Incoming transmission banner -->
+  <div id="incoming-banner">
+    <div class="incoming-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="incoming-text">
+      INCOMING FROM <strong id="incoming-from">—</strong>
+    </div>
+    <div class="incoming-targets" id="incoming-targets-text"></div>
+  </div>
+
+  <!-- Peer grid -->
+  <div id="peers-grid">
+    <div class="empty-state">
+      <div class="em-icon">📡</div>
+      <p>WAITING FOR TEAMMATES<br/>SHARE THE CHANNEL CODE TO CONNECT</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="ptt-meta">
+      <div class="transmit-to" id="transmit-to-label">
+        TRANSMIT TO: <em>ALL AVAILABLE</em>
+      </div>
+      <button class="clear-targets-btn" id="clear-targets-btn">× CLEAR SELECTION</button>
+    </div>
+    <div class="ptt-row">
+      <button id="ptt-btn" disabled>
+        <span class="ptt-icon">🎙</span>
+        <span class="ptt-label-text">HOLD TO TALK</span>
+        <div class="ptt-wave">
+          <div class="w"></div><div class="w"></div><div class="w"></div>
+          <div class="w"></div><div class="w"></div><div class="w"></div>
+        </div>
+      </button>
+    </div>
+    <div class="shortcut-hint">
+      Hold <kbd>SPACE</kbd> to transmit &nbsp;·&nbsp; Click peers to select recipients
+    </div>
+  </footer>
+</div>
+
+<!-- Hidden audio elements rendered here -->
+<div id="audio-container"></div>
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════ JAVASCRIPT ════════════════════════════ -->
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * TALKNET — WebRTC Push-to-Talk System
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * WEBRTC SIGNALING FLOW (what happens when you join):
+ *
+ *   You                    Server                   Alice (already in room)
+ *    │──── join ──────────►│                                │
+ *    │◄─── room-joined ────│ (with Alice's info)            │
+ *    │                     │──── peer-joined ──────────────►│
+ *    │                     │                                │
+ *    │  [You create offer to Alice]                         │
+ *    │──── offer ─────────►│──── offer ────────────────────►│
+ *    │                     │                        [Alice creates answer]
+ *    │◄─── answer ─────────│◄─── answer ────────────────────│
+ *    │                     │                                │
+ *    │  [ICE candidates exchanged via server]               │
+ *    │◄════════════════ P2P AUDIO CONNECTED ════════════════│
+ *
+ * SELECTIVE BROADCAST MECHANISM:
+ *
+ *   Each RTCPeerConnection gets a CLONED audio track:
+ *     const cloned = localStream.getAudioTracks()[0].clone();
+ *     peerConn.addTrack(cloned);                ← independent object
+ *
+ *   When PTT held with targets [Alice, Bob]:
+ *     sender_alice.track.enabled = true    ← audio flows to Alice
+ *     sender_bob.track.enabled   = true    ← audio flows to Bob
+ *     sender_carol.track.enabled = false   ← Carol hears nothing
+ *
+ *   This works because .clone() creates an independent MediaStreamTrack.
+ *   Enabling one doesn't affect others.
+ *
+ * ICE (Interactive Connectivity Establishment):
+ *   1. STUN: discovers your public IP (works on most networks)
+ *   2. TURN: relay server for strict NATs (not included here, add for prod)
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+// ─── Config ──────────────────────────────────────────────────────────────────
+
+const ICE_SERVERS = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let ws            = null;      // WebSocket to signaling server
+let myPeerId      = null;      // Assigned by server on join
+let myUsername    = '';
+let myRoomId      = '';
+let myStatus      = 'available'; // 'available' | 'dnd'
+let localStream   = null;      // Microphone stream
+let pttActive     = false;
+let isDND         = false;
+
+// peers[peerId] = { username, status, pc, audioSender, audioEl }
+const peers       = {};
+const selectedTargets = new Set();
+const pendingCandidates = {}; // peerId → [RTCIceCandidate] (queued before remote desc set)
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ─── WebRTC: Peer Connection ─────────────────────────────────────────────────
+
+function createPeerConnection(peerId) {
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  // ① Add a CLONED, DISABLED audio track for selective control
+  const sourceTrack = localStream.getAudioTracks()[0];
+  const clonedTrack = sourceTrack.clone();
+  clonedTrack.enabled = false;            // muted until PTT
+  const sender = pc.addTrack(clonedTrack);
+
+  // ② Handle incoming audio from remote peer
+  pc.ontrack = (event) => {
+    const audioEl = getOrCreateAudio(peerId);
+    if (event.streams && event.streams[0]) {
+      audioEl.srcObject = event.streams[0];
+    }
+  };
+
+  // ③ Relay ICE candidates through signaling server
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      wsSend({ type: 'ice-candidate', to: peerId, candidate: event.candidate });
+    }
+  };
+
+  // ④ Log connection state changes
+  pc.onconnectionstatechange = () => {
+    console.log(`[RTC] ${peerId} → ${pc.connectionState}`);
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === 'failed') {
+      console.warn(`[ICE] Failed with ${peerId} — attempting restart`);
+      pc.restartIce();
+    }
+  };
+
+  if (!peers[peerId]) peers[peerId] = { username: '', status: 'available' };
+  peers[peerId].pc = pc;
+  peers[peerId].audioSender = sender;
+
+  return pc;
+}
+
+function getOrCreateAudio(peerId) {
+  let el = document.getElementById(`audio-${peerId}`);
+  if (!el) {
+    el = document.createElement('audio');
+    el.id = `audio-${peerId}`;
+    el.autoplay = true;
+    el.playsInline = true;
+    document.getElementById('audio-container').appendChild(el);
+  }
+  return el;
+}
+
+// ─── WebRTC: Offer/Answer Handshake ─────────────────────────────────────────
+
+/**
+ * Called when YOU are the new peer — you initiate offers to all existing peers.
+ * This is the "polite" side in WebRTC perfect negotiation terminology.
+ */
+async function sendOffer(peerId) {
+  const pc = createPeerConnection(peerId);
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    wsSend({ type: 'offer', to: peerId, sdp: pc.localDescription });
+    console.log(`[RTC] Offer → ${peerId}`);
+  } catch (e) {
+    console.error('[RTC] Offer failed:', e);
+  }
+}
+
+/**
+ * Called when an existing peer offers to connect to you.
+ */
+async function handleOffer(fromId, sdp) {
+  const pc = createPeerConnection(fromId);
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+
+    // Drain queued ICE candidates now that remote desc is set
+    (pendingCandidates[fromId] || []).forEach(c => pc.addIceCandidate(c).catch(() => {}));
+    delete pendingCandidates[fromId];
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    wsSend({ type: 'answer', to: fromId, sdp: pc.localDescription });
+    console.log(`[RTC] Answer → ${fromId}`);
+  } catch (e) {
+    console.error('[RTC] Handle offer failed:', e);
+  }
+}
+
+async function handleAnswer(fromId, sdp) {
+  const pc = peers[fromId]?.pc;
+  if (!pc) return;
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    // Drain queued candidates
+    (pendingCandidates[fromId] || []).forEach(c => pc.addIceCandidate(c).catch(() => {}));
+    delete pendingCandidates[fromId];
+  } catch (e) {
+    console.error('[RTC] Handle answer failed:', e);
+  }
+}
+
+function addIceCandidate(fromId, candidate) {
+  const pc = peers[fromId]?.pc;
+  const iceCandidate = new RTCIceCandidate(candidate);
+  if (pc && pc.remoteDescription) {
+    pc.addIceCandidate(iceCandidate).catch(() => {});
+  } else {
+    // Queue until remote description is ready
+    if (!pendingCandidates[fromId]) pendingCandidates[fromId] = [];
+    pendingCandidates[fromId].push(iceCandidate);
+  }
+}
+
+function closePeer(peerId) {
+  const peer = peers[peerId];
+  if (!peer) return;
+
+  // Stop the cloned track to avoid memory leaks
+  if (peer.audioSender?.track) peer.audioSender.track.stop();
+
+  peer.pc?.close();
+
+  const audioEl = document.getElementById(`audio-${peerId}`);
+  audioEl?.remove();
+
+  delete peers[peerId];
+}
+
+// ─── PTT Logic ───────────────────────────────────────────────────────────────
+
+/**
+ * SELECTIVE BROADCAST:
+ * Enable audio track only on the peer connections we want to transmit to.
+ * Each peer connection has its own cloned track, so this is independent.
+ */
+function startPTT() {
+  if (pttActive || isDND) return;
+  if (!localStream) return;
+
+  // Determine target peer IDs
+  const targets = selectedTargets.size > 0
+    ? [...selectedTargets]
+    : Object.keys(peers).filter(id => peers[id]?.status === 'available');
+
+  if (targets.length === 0) {
+    toast('NO AVAILABLE PEERS TO TRANSMIT TO');
+    return;
+  }
+
+  pttActive = true;
+  document.getElementById('ptt-btn').classList.add('transmitting');
+
+  // Enable audio track ONLY for target connections
+  Object.keys(peers).forEach(pid => {
+    const sender = peers[pid]?.audioSender;
+    if (sender?.track) {
+      sender.track.enabled = targets.includes(pid);
+    }
+  });
+
+  // Notify server (for UI updates on other clients)
+  wsSend({
+    type: 'ptt-start',
+    targets: selectedTargets.size > 0 ? [...selectedTargets] : [],
+  });
+}
+
+function stopPTT() {
+  if (!pttActive) return;
+  pttActive = false;
+
+  document.getElementById('ptt-btn').classList.remove('transmitting');
+
+  // Silence all connections
+  Object.values(peers).forEach(peer => {
+    if (peer?.audioSender?.track) {
+      peer.audioSender.track.enabled = false;
+    }
+  });
+
+  wsSend({ type: 'ptt-stop' });
+}
+
+// ─── WebSocket ───────────────────────────────────────────────────────────────
+
+function wsSend(msg) {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+function connectWS(username, roomId) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => {
+    wsSend({ type: 'join', username, roomId });
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+    handleMessage(msg);
+  };
+
+  ws.onclose = () => {
+    toast('CONNECTION LOST — RECONNECTING...');
+    setTimeout(() => connectWS(username, roomId), 3000);
+  };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+
+    // ── Joined room successfully ────────────────────────────────────────────
+    case 'room-joined': {
+      myPeerId = msg.peerId;
+      document.getElementById('peer-count-num').textContent = msg.peers.length + 1;
+
+      // Register existing peers (no PC yet — they will offer to us? No — WE offer to them)
+      msg.peers.forEach(p => {
+        peers[p.id] = { username: p.username, status: p.status, pc: null, audioSender: null };
+        renderPeerCard(p.id);
+        // WE are the new peer, so WE initiate connections to existing peers
+        sendOffer(p.id);
+      });
+
+      updateEmptyState();
+      toast(`JOINED CHANNEL ${myRoomId}`);
+      document.getElementById('ptt-btn').disabled = false;
+      break;
+    }
+
+    // ── New peer joined ─────────────────────────────────────────────────────
+    case 'peer-joined': {
+      peers[msg.peerId] = { username: msg.username, status: 'available', pc: null, audioSender: null };
+      renderPeerCard(msg.peerId);
+      updateEmptyState();
+      updatePeerCount();
+      toast(`${msg.username} JOINED THE CHANNEL`);
+      // NEW peer will initiate offer to us — we wait
+      break;
+    }
+
+    // ── Peer disconnected ───────────────────────────────────────────────────
+    case 'peer-left': {
+      const name = peers[msg.peerId]?.username || msg.peerId;
+      selectedTargets.delete(msg.peerId);
+      closePeer(msg.peerId);
+      removePeerCard(msg.peerId);
+      updateEmptyState();
+      updatePeerCount();
+      updateTransmitLabel();
+      toast(`${name} LEFT THE CHANNEL`);
+      break;
+    }
+
+    // ── WebRTC signaling (relayed by server) ────────────────────────────────
+    case 'offer':          handleOffer(msg.from, msg.sdp);            break;
+    case 'answer':         handleAnswer(msg.from, msg.sdp);           break;
+    case 'ice-candidate':  addIceCandidate(msg.from, msg.candidate);  break;
+
+    // ── Availability status ─────────────────────────────────────────────────
+    case 'peer-status': {
+      if (peers[msg.peerId]) {
+        peers[msg.peerId].status = msg.status;
+        updatePeerCard(msg.peerId);
+        // If they went DND/busy and were selected, deselect
+        if (msg.status !== 'available') {
+          selectedTargets.delete(msg.peerId);
+          updateTransmitLabel();
+        }
+      }
+      break;
+    }
+
+    // ── Someone started transmitting ────────────────────────────────────────
+    case 'transmission-start': {
+      if (msg.from === myPeerId) break;
+      if (peers[msg.from]) peers[msg.from].status = 'busy';
+
+      // Show incoming banner if I'm one of the targets (or targets is everyone)
+      const amTarget = msg.targets.length === 0 || msg.targets.includes(myPeerId);
+
+      if (amTarget) {
+        showIncomingBanner(msg.username, msg.targets);
+      }
+
+      // Highlight receiving peers
+      msg.targets.forEach(id => {
+        if (id !== myPeerId) {
+          const card = document.getElementById(`card-${id}`);
+          card?.classList.add('receiving');
+        }
+      });
+
+      updatePeerCard(msg.from);
+      break;
+    }
+
+    // ── Transmission ended ──────────────────────────────────────────────────
+    case 'transmission-end': {
+      if (msg.from === myPeerId) break;
+      if (peers[msg.from]) peers[msg.from].status = 'available';
+
+      hideIncomingBanner();
+
+      // Remove receiving highlight from all cards
+      document.querySelectorAll('.peer-card.receiving')
+        .forEach(c => c.classList.remove('receiving'));
+
+      updatePeerCard(msg.from);
+      break;
+    }
+  }
+}
+
+// ─── UI: Peer Cards ───────────────────────────────────────────────────────────
+
+function renderPeerCard(peerId) {
+  // Remove empty state
+  document.querySelector('.empty-state')?.remove();
+
+  const peer = peers[peerId];
+  if (!peer) return;
+
+  const card = document.createElement('div');
+  card.className = `peer-card ${peer.status}`;
+  card.id = `card-${peerId}`;
+  card.innerHTML = `
+    <div class="select-check">✓</div>
+    <div class="peer-avatar">${peer.username[0].toUpperCase()}</div>
+    <div class="peer-name">${peer.username}</div>
+    <div class="peer-status-row">
+      <span class="status-dot"></span>
+      <span class="status-label">${statusLabel(peer.status)}</span>
+    </div>
+  `;
+
+  card.addEventListener('click', () => toggleTarget(peerId));
+  document.getElementById('peers-grid').appendChild(card);
+}
+
+function updatePeerCard(peerId) {
+  const peer = peers[peerId];
+  const card = document.getElementById(`card-${peerId}`);
+  if (!peer || !card) return;
+
+  const isSelected  = selectedTargets.has(peerId);
+  const isReceiving = card.classList.contains('receiving');
+
+  card.className = `peer-card ${peer.status}${isSelected ? ' selected' : ''}${isReceiving ? ' receiving' : ''}`;
+  card.querySelector('.status-label').textContent = statusLabel(peer.status);
+}
+
+function removePeerCard(peerId) {
+  document.getElementById(`card-${peerId}`)?.remove();
+}
+
+function statusLabel(s) {
+  return { available: 'AVAILABLE', busy: 'TRANSMITTING', dnd: 'UNAVAILABLE' }[s] || s.toUpperCase();
+}
+
+function updateEmptyState() {
+  const grid = document.getElementById('peers-grid');
+  const hasCards = grid.querySelector('.peer-card');
+  if (!hasCards && !grid.querySelector('.empty-state')) {
+    const em = document.createElement('div');
+    em.className = 'empty-state';
+    em.innerHTML = '<div class="em-icon">📡</div><p>WAITING FOR TEAMMATES<br/>SHARE THE CHANNEL CODE TO CONNECT</p>';
+    grid.appendChild(em);
+  }
+}
+
+function updatePeerCount() {
+  document.getElementById('peer-count-num').textContent = Object.keys(peers).length + 1;
+}
+
+// ─── UI: Target Selection ────────────────────────────────────────────────────
+
+function toggleTarget(peerId) {
+  const peer = peers[peerId];
+  if (!peer || peer.status !== 'available') return;
+
+  if (selectedTargets.has(peerId)) {
+    selectedTargets.delete(peerId);
+  } else {
+    selectedTargets.add(peerId);
+  }
+
+  updatePeerCard(peerId);
+  updateTransmitLabel();
+}
+
+function updateTransmitLabel() {
+  const label = document.getElementById('transmit-to-label');
+  const clearBtn = document.getElementById('clear-targets-btn');
+
+  if (selectedTargets.size === 0) {
+    label.innerHTML = 'TRANSMIT TO: <em>ALL AVAILABLE</em>';
+    clearBtn.classList.remove('visible');
+  } else {
+    const names = [...selectedTargets].map(id => peers[id]?.username || id).join(', ');
+    label.innerHTML = `TRANSMIT TO: <em>${names}</em>`;
+    clearBtn.classList.add('visible');
+  }
+}
+
+// ─── UI: Incoming Banner ──────────────────────────────────────────────────────
+
+function showIncomingBanner(fromUsername, targets) {
+  const banner = document.getElementById('incoming-banner');
+  document.getElementById('incoming-from').textContent = fromUsername;
+
+  if (targets.length === 0) {
+    document.getElementById('incoming-targets-text').textContent = '→ BROADCAST TO ALL';
+  } else {
+    const names = targets
+      .filter(id => id !== myPeerId)
+      .map(id => peers[id]?.username || id);
+    const allTargetNames = [myUsername, ...names];
+    document.getElementById('incoming-targets-text').textContent =
+      `→ ${allTargetNames.join(', ')}`;
+  }
+
+  banner.classList.add('active');
+}
+
+function hideIncomingBanner() {
+  document.getElementById('incoming-banner').classList.remove('active');
+}
+
+// ─── Join Flow ────────────────────────────────────────────────────────────────
+
+async function joinRoom() {
+  const username = document.getElementById('username-input').value.trim().toUpperCase();
+  const roomId   = document.getElementById('room-input').value.trim().toUpperCase();
+
+  if (!username) { toast('ENTER YOUR CALLSIGN'); return; }
+  if (!roomId)   { toast('ENTER A CHANNEL CODE'); return; }
+
+  // Request microphone access
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 48000 },
+      video: false,
+    });
+    // Ensure all tracks start disabled
+    localStream.getAudioTracks().forEach(t => (t.enabled = false));
+  } catch {
+    toast('MICROPHONE ACCESS REQUIRED');
+    return;
+  }
+
+  myUsername = username;
+  myRoomId   = roomId;
+
+  document.getElementById('join-screen').style.display = 'none';
+  document.getElementById('app-screen').classList.add('active');
+  document.getElementById('my-name-display').textContent = username;
+  document.getElementById('room-display').textContent = roomId;
+
+  connectWS(username, roomId);
+}
+
+// ─── PTT Event Listeners ──────────────────────────────────────────────────────
+
+const pttBtn = document.getElementById('ptt-btn');
+
+// Touch / mouse events on the button
+pttBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startPTT(); });
+pttBtn.addEventListener('mouseup',   stopPTT);
+pttBtn.addEventListener('mouseleave', stopPTT);
+pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPTT(); }, { passive: false });
+pttBtn.addEventListener('touchend',   stopPTT);
+
+// Spacebar keyboard shortcut
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+  e.preventDefault();
+  if (!e.repeat) startPTT();
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') stopPTT();
+});
+
+// ─── Other UI Events ─────────────────────────────────────────────────────────
+
+document.getElementById('join-btn').addEventListener('click', joinRoom);
+document.getElementById('username-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('room-input').focus();
+});
+document.getElementById('room-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinRoom();
+});
+
+document.getElementById('dnd-btn').addEventListener('click', () => {
+  isDND = !isDND;
+  myStatus = isDND ? 'dnd' : 'available';
+  const btn = document.getElementById('dnd-btn');
+  btn.classList.toggle('dnd-active', isDND);
+  document.getElementById('dnd-label').textContent = isDND ? 'UNAVAILABLE' : 'AVAILABLE';
+  if (pttActive && isDND) stopPTT();
+  wsSend({ type: 'status-change', status: myStatus });
+});
+
+document.getElementById('clear-targets-btn').addEventListener('click', () => {
+  selectedTargets.forEach(id => {
+    selectedTargets.delete(id);
+    updatePeerCard(id);
+  });
+  updateTransmitLabel();
+});
+
+// Copy room code to clipboard
+document.getElementById('room-display').addEventListener('click', () => {
+  navigator.clipboard.writeText(myRoomId).then(() => toast('CHANNEL CODE COPIED'));
+});
+
+// Pre-fill room from URL hash (e.g. talknet.local/#ALPHA)
+const hashRoom = location.hash.slice(1).toUpperCase();
+if (hashRoom) document.getElementById('room-input').value = hashRoom;
+</script>
+</body>
+</html>
