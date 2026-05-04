@@ -811,15 +811,16 @@ function createPeerConnection(peerId) {
   // ① Add a CLONED, DISABLED audio track for selective control
   const sourceTrack = localStream.getAudioTracks()[0];
   const clonedTrack = sourceTrack.clone();
-  clonedTrack.enabled = false;            // muted until PTT
-  const sender = pc.addTrack(clonedTrack);
+  clonedTrack.enabled = false;
+  const txStream = new MediaStream([clonedTrack]);   // wrap in a stream
+  const sender = pc.addTrack(clonedTrack, txStream); // pass stream as 2nd arg
 
   // ② Handle incoming audio from remote peer
   pc.ontrack = (event) => {
     const audioEl = getOrCreateAudio(peerId);
-    if (event.streams && event.streams[0]) {
-      audioEl.srcObject = event.streams[0];
-    }
+    const stream = event.streams?.[0] ?? new MediaStream([event.track]);
+    audioEl.srcObject = stream;
+    audioEl.play().catch(() => {});  // explicit play bypasses autoplay block
   };
 
   // ③ Relay ICE candidates through signaling server
